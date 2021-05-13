@@ -65,6 +65,12 @@ func (c *Client) About() (*fiware.IoTAgentAboutResponse, error) {
 
 // CreateService creates a service group in the iot-agent
 func (c *Client) CreateService(service interface{}) error {
-	c.httpClient.R().SetBody(service).SetHeaders(c.FiwareConfig.GetHeader())
+	resp, err := c.httpClient.R().SetBody(service).SetHeaders(c.FiwareConfig.GetHeader()).Post(fmt.Sprintf("%s/iot/services", c.Host))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode() != 200 {
+		return fmt.Errorf("IoT-Agent respons with error code %d", resp.StatusCode())
+	}
 	return nil
 }
