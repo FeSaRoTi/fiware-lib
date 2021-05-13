@@ -19,3 +19,38 @@ type IoTAgentAboutResponse struct {
 	Baseroot   string `json:"baseRoot"`
 	Version    string `json:"version"`
 }
+
+type IoTAgentGetServicesResponse struct {
+	Services []ServiceGroup `json:"services"`
+}
+type Command struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+type Unitcode struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+type Metadata struct {
+	Unitcode Unitcode `json:"unitCode"`
+}
+type Attribute struct {
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Metadata Metadata `json:"metadata"`
+}
+type Lazy struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+type ServiceGroup struct {
+	Resource   string      `json:"resource"`
+	Apikey     string      `json:"apikey"`
+	Type       string      `json:"type"`
+	Trust      string      `json:"trust"`
+	Cbhost     string      `json:"cbHost"`
+	Protocol   string      `json:"protocol"`
+	Commands   []Command   `json:"commands"`
+	Attributes []Attribute `json:"attributes"`
+	Lazy       []Lazy      `json:"lazy"`
+}

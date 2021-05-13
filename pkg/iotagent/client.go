@@ -74,3 +74,16 @@ func (c *Client) CreateService(service interface{}) error {
 	}
 	return nil
 }
+
+// GetServiceGroups retuns a list of service groups
+func (c *Client) GetServiceGroups() (*fiware.IoTAgentGetServicesResponse, error) {
+	respObj := &fiware.IoTAgentGetServicesResponse{}
+	resp, err := c.httpClient.R().SetResult(respObj).SetHeaders(c.FiwareConfig.GetHeader()).Get(fmt.Sprintf("%s/iot/services", c.Host))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != 200 {
+		return nil, fmt.Errorf("IoT-Agent respons with error code %d", resp.StatusCode())
+	}
+	return respObj, nil
+}
