@@ -12,3 +12,10 @@ type IoTManagerGetResponse struct {
 		V           int    `json:"__v"`
 	} `json:"protocols"`
 }
+
+type IoTAgentAboutResponse struct {
+	Libversion string `json:"libVersion"`
+	Port       string `json:"port"`
+	Baseroot   string `json:"baseRoot"`
+	Version    string `json:"version"`
+}
