@@ -38,3 +38,10 @@ func NewClient(opts ...ClientOption) *HTTPClient {
 	}
 	return c
 }
+
+//WithHTTPClient sets the http client from the outside
+func WithHTTPClient(client *resty.Client) ClientOption {
+	return func(c *HTTPClient) {
+		c.Client = client
+	}
+}

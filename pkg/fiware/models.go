@@ -20,6 +20,35 @@ type IoTAgentAboutResponse struct {
 	Version    string `json:"version"`
 }
 
+//type IoTAgentGetServicesResponse struct {
+//	Services []struct {
+//		Resource string `json:"resource"`
+//		Apikey   string `json:"apikey"`
+//		Type     string `json:"type"`
+//		Trust    string `json:"trust"`
+//		Cbhost   string `json:"cbHost"`
+//		Protocol string `json:"protocol"`
+//		Commands []struct {
+//			Name string `json:"name"`
+//			Type string `json:"type"`
+//		} `json:"commands"`
+//		Attributes []struct {
+//			Name     string `json:"name"`
+//			Type     string `json:"type"`
+//			Metadata struct {
+//				Unitcode struct {
+//					Type  string `json:"type"`
+//					Value string `json:"value"`
+//				} `json:"unitCode"`
+//			} `json:"metadata"`
+//		} `json:"attributes"`
+//		Lazy []struct {
+//			Name string `json:"name"`
+//			Type string `json:"type"`
+//		} `json:"lazy"`
+//	} `json:"services"`
+//}
+
 type IoTAgentGetServicesResponse struct {
 	Services []ServiceGroup `json:"services"`
 }
