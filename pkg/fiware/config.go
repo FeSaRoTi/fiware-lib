@@ -22,15 +22,15 @@ func NewConfig(opts ...ConfigOpts) *Config {
 	return c
 }
 
-// Service sets the fiware-service header for any request made with this configuration
-func Service(service string) ConfigOpts {
+// WithService sets the fiware-service header for any request made with this configuration
+func WithService(service string) ConfigOpts {
 	return func(c *Config) {
 		c.fiwareService = service
 	}
 }
 
-// ServicePath sets the fiware-servicePath header for any request made with this configuration
-func ServicePath(servicePath string) ConfigOpts {
+// WithServicePath sets the fiware-servicePath header for any request made with this configuration
+func WithServicePath(servicePath string) ConfigOpts {
 	return func(c *Config) {
 		c.fiwareServicePath = servicePath
 	}

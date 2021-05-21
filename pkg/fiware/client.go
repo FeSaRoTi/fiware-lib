@@ -18,8 +18,8 @@ type HTTPClient struct {
 	Host string
 }
 
-// Host sets the hostdomain for the server you want to communicate with (https://example.de)
-func Host(host string) ClientOption {
+// WithHost sets the hostdomain for the server you want to communicate with (https://example.de)
+func WithHost(host string) ClientOption {
 	if host[len(host)-1:] == "/" {
 		host = host[0 : len(host)-1]
 	}

@@ -52,6 +52,9 @@ type IoTAgentAboutResponse struct {
 type IoTAgentGetServicesResponse struct {
 	Services []ServiceGroup `json:"services"`
 }
+type IoTAgentCreateServiceGroupRequest struct {
+	Services []ServiceGroup `json:"services"`
+}
 type Command struct {
 	Name string `json:"name"`
 	Type string `json:"type"`

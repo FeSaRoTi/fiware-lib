@@ -16,6 +16,16 @@ type Client struct {
 	Protocol     string
 }
 
+type IoTAgentError struct {
+	Name       string `json:"name"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"status_code,omitempty"`
+}
+
+func (i *IoTAgentError) Error() string {
+	return fmt.Sprintf("%s: %s - http code: %v", i.Name, i.Message, i.StatusCode)
+}
+
 type ClientOpts func(*Client)
 
 func NewClient(opts ...ClientOpts) *Client {
@@ -36,8 +46,8 @@ func HTTPClient(client *fiware.HTTPClient) ClientOpts {
 	}
 }
 
-//Host sets the host of the iot-agent (https://iot-agent.de)
-func Host(host string) ClientOpts {
+//WithHost sets the host of the iot-agent (https://iot-agent.de)
+func WithHost(host string) ClientOpts {
 	if host[len(host)-1:] == "/" {
 		host = host[0 : len(host)-1]
 	}
@@ -46,22 +56,22 @@ func Host(host string) ClientOpts {
 	}
 }
 
-//Resource sets the resource of the iotagent
-func Resource(res string) ClientOpts {
+//WithResource sets the resource of the iotagent
+func WithResource(res string) ClientOpts {
 	return func(c *Client) {
 		c.Resource = res
 	}
 }
 
-// Protocol sets the protocol which is provided by the iot-agent
-func Protocol(prot string) ClientOpts {
+// WithProtocol sets the protocol which is provided by the iot-agent
+func WithProtocol(prot string) ClientOpts {
 	return func(c *Client) {
 		c.Protocol = prot
 	}
 }
 
-// FiwareConfig sets the fiware configuration for this iot-agent
-func FiwareConfig(conf *fiware.Config) ClientOpts {
+// WithFiwareConfig sets the fiware configuration for this iot-agent
+func WithFiwareConfig(conf *fiware.Config) ClientOpts {
 	return func(c *Client) {
 		c.FiwareConfig = conf
 	}
@@ -70,40 +80,78 @@ func FiwareConfig(conf *fiware.Config) ClientOpts {
 // About returns the configuration from the iot-agent
 func (c *Client) About() (*fiware.IoTAgentAboutResponse, error) {
 	respObj := &fiware.IoTAgentAboutResponse{}
-	resp, err := c.httpClient.R().SetResult(respObj).
+	resp, err := c.httpClient.R().SetResult(respObj).SetError(&IoTAgentError{}).
 		SetHeaders(c.FiwareConfig.GetHeader()).Get(fmt.Sprintf("%s/iot/about", c.Host))
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("IoT-Agent response code: %d", resp.StatusCode())
+	if statusCode := resp.StatusCode(); statusCode != 200 {
+		httpErr := resp.Error().(*IoTAgentError)
+		httpErr.StatusCode = statusCode
+		return nil, httpErr
 	}
 	return respObj, nil
 }
 
-// CreateService creates a service group in the iot-agent
-func (c *Client) CreateService(service interface{}) error {
-	resp, err := c.httpClient.R().SetBody(service).SetHeaders(c.FiwareConfig.GetHeader()).Post(fmt.Sprintf("%s/iot/services", c.Host))
+// UpdateService updates a service group which is identified by api key and resource
+func (c *Client) UpdateService(services interface{}) error {
+	resp, err := c.httpClient.R().SetBody(services).SetError(&IoTAgentError{}).SetHeaders(c.FiwareConfig.GetHeader()).Put(fmt.Sprintf("%s/iot/services", c.Host))
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode() != 200 {
-		return fmt.Errorf("IoT-Agent respons with error code %d", resp.StatusCode())
+	if statusCode := resp.StatusCode(); statusCode != 200 {
+		httpErr := resp.Error().(*IoTAgentError)
+		httpErr.StatusCode = statusCode
+		return httpErr
 	}
 	return nil
 }
 
-// GetServiceGroups retuns a list of service groups
-func (c *Client) GetServiceGroups() (*fiware.IoTAgentGetServicesResponse, error) {
+// CreateService creates a service group in the iot-agent
+func (c *Client) CreateService(services *fiware.IoTAgentCreateServiceGroupRequest) error {
+	resp, err := c.httpClient.R().SetBody(services).SetError(&IoTAgentError{}).
+		SetHeaders(c.FiwareConfig.GetHeader()).Post(fmt.Sprintf("%s/iot/services", c.Host))
+	if err != nil {
+		return err
+	}
+	if statusCode := resp.StatusCode(); statusCode != 200 {
+		httpErr := resp.Error().(*IoTAgentError)
+		httpErr.StatusCode = statusCode
+		return httpErr
+	}
+	return nil
+}
+
+// GetService retuns a list of service groups
+func (c *Client) GetService() (*fiware.IoTAgentGetServicesResponse, error) {
 	resp, err := c.httpClient.R().
-		SetResult(&fiware.IoTAgentGetServicesResponse{}).
+		SetResult(&fiware.IoTAgentGetServicesResponse{}).SetError(&IoTAgentError{}).
 		SetHeaders(c.FiwareConfig.GetHeader()).Get(fmt.Sprintf("%s/iot/services", c.Host))
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("IoT-Agent respons with error code %d", resp.StatusCode())
+	if statusCode := resp.StatusCode(); statusCode != 200 {
+		httpErr := resp.Error().(*IoTAgentError)
+		httpErr.StatusCode = statusCode
+		return nil, httpErr
 	}
-	fmt.Println(string(resp.Body()))
 	return resp.Result().(*fiware.IoTAgentGetServicesResponse), nil
+}
+
+// DeleteService deletes a service group specified by the apikey and the resource
+func (c *Client) DeleteService(resource string, apikey string) error {
+	resp, err := c.httpClient.R().SetError(&IoTAgentError{}).
+		SetHeaders(c.FiwareConfig.GetHeader()).
+		SetQueryParam("apikey", apikey).SetQueryParam("resource", resource).Delete(fmt.Sprintf("%s/iot/services", c.Host))
+	if err != nil {
+		return err
+	}
+	if statusCode := resp.StatusCode(); statusCode != 200 {
+		httpErr := resp.Error().(*IoTAgentError)
+		httpErr.StatusCode = statusCode
+		return httpErr
+	}
+
+	return nil
+
 }
