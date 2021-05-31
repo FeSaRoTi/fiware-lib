@@ -25,7 +25,7 @@ func createTestServer(client *http.Client, host string) *ioTAgentTestServer {
 	i := &ioTAgentTestServer{}
 	httpmock.ActivateNonDefault(client)
 	// Get response mock
-	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/iot/services", host), func(req *http.Request) (*http.Response, error) {
+	httpmock.RegisterResponder("GET", fmt.Sprintf("=~^%s/iot/(services|devices)", host), func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("fiware-service") == "" || req.Header.Get("fiware-servicepath") == "" {
 			return httpmock.NewJsonResponse(400, IoTAgentError{Name: "MISSING_HEADERS", Message: "Some headers were missing from the request: [\"fiware-service\",\"fiware-servicepath\"]"})
 		}
@@ -43,7 +43,7 @@ func createTestServer(client *http.Client, host string) *ioTAgentTestServer {
 	})
 
 	// Create Service response mock
-	httpmock.RegisterResponder("POST", fmt.Sprintf("%s/iot/services", host), func(req *http.Request) (*http.Response, error) {
+	httpmock.RegisterResponder("POST", fmt.Sprintf("=~^%s/iot/(services|devices)", host), func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("fiware-service") == "" || req.Header.Get("fiware-servicepath") == "" {
 			return httpmock.NewJsonResponse(400, IoTAgentError{Name: "MISSING_HEADERS", Message: "Some headers were missing from the request: [\"fiware-service\",\"fiware-servicepath\"]"})
 		}
@@ -61,7 +61,7 @@ func createTestServer(client *http.Client, host string) *ioTAgentTestServer {
 	})
 
 	// Update Service response mock
-	httpmock.RegisterResponder("PUT", fmt.Sprintf("%s/iot/services", host), func(req *http.Request) (*http.Response, error) {
+	httpmock.RegisterResponder("PUT", fmt.Sprintf("=~^%s/iot/(services|devices)", host), func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("fiware-service") == "" || req.Header.Get("fiware-servicepath") == "" {
 			return httpmock.NewJsonResponse(400, IoTAgentError{
 				Name:    "MISSING_HEADERS",
@@ -81,7 +81,7 @@ func createTestServer(client *http.Client, host string) *ioTAgentTestServer {
 	})
 
 	// Delete Service response mock
-	httpmock.RegisterResponder("DELETE", fmt.Sprintf("%s/iot/services", host), func(req *http.Request) (*http.Response, error) {
+	httpmock.RegisterResponder("DELETE", fmt.Sprintf("=~^%s/iot/(services|devices)", host), func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("fiware-service") == "" || req.Header.Get("fiware-servicepath") == "" {
 			return httpmock.NewJsonResponse(400, IoTAgentError{Name: "MISSING_HEADERS", Message: "Some headers were missing from the request: [\"fiware-service\",\"fiware-servicepath\"]"})
 		}
@@ -159,6 +159,40 @@ func TestClient_GetService(t *testing.T) {
 		})
 	}
 }
+func getDevices() fiware.Devices {
+	return fiware.Devices{
+		DeviceID:   "DeviceId",
+		EntityName: "urn:test",
+		EntityType: "Device001",
+		Attributes: []fiware.Attributes{{
+			ObjectID: "t",
+			Name:     "temperature",
+			Type:     "Number",
+		}},
+		Lazy: []fiware.Lazy{{
+			ObjectID: "t",
+			Name:     "temperature",
+			Type:     "",
+			Metadata: fiware.Metadata{
+				Unitcode: fiware.Unitcode{
+					Type:  "",
+					Value: "",
+				},
+			},
+		}},
+		Commands: []fiware.Commands{{
+			ObjectID: "t",
+			Name:     "temperature",
+			Type:     "Number",
+		}},
+		StaticAttributes: []fiware.StaticAttributes{{
+			Name:  "SerialID",
+			Value: "10238kl81",
+			Type:  "Text",
+		}},
+	}
+}
+
 func getServiceGroup() fiware.ServiceGroup {
 	return fiware.ServiceGroup{
 		Resource: "/iot/d",
@@ -333,11 +367,8 @@ func TestClient_UpdateService(t *testing.T) {
 
 func TestClient_DeleteService(t *testing.T) {
 	client := resty.New()
-	testServer := createTestServer(client.GetClient(), "http://iot-agent.de")
+	createTestServer(client.GetClient(), "http://iot-agent.de")
 
-	obj := fiware.IoTAgentCreateServiceGroupRequest{
-		Services: []fiware.ServiceGroup{getServiceGroup()}}
-	testServer.saveObject(obj)
 	httpClient := fiware.NewClient(fiware.WithHTTPClient(client))
 	type fields struct {
 		httpClient   *fiware.HTTPClient
@@ -398,6 +429,314 @@ func TestClient_DeleteService(t *testing.T) {
 			}
 			if err := c.DeleteService(tt.args.resource, tt.args.apikey); (err != nil) != tt.wantErr {
 				t.Errorf("Client.DeleteService() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestClient_CreateDevice(t *testing.T) {
+	client := resty.New()
+	testServer := createTestServer(client.GetClient(), "http://iot-agent.de")
+
+	obj := fiware.IoTAgentCreateDeviceRequest{
+		Devices: []fiware.Devices{getDevices()}}
+	testServer.saveObject(obj)
+	httpClient := fiware.NewClient(fiware.WithHTTPClient(client))
+	type fields struct {
+		httpClient   *fiware.HTTPClient
+		Host         string
+		FiwareConfig *fiware.Config
+		Resource     string
+		Protocol     string
+	}
+	type args struct {
+		device *fiware.IoTAgentCreateDeviceRequest
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Create Device",
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("berlin"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			wantErr: false,
+			args: args{
+				device: &obj,
+			},
+		},
+		{
+			name: "Handle error response",
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("fail"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			wantErr: true,
+			args: args{
+				device: &obj,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{
+				httpClient:   tt.fields.httpClient,
+				Host:         tt.fields.Host,
+				FiwareConfig: tt.fields.FiwareConfig,
+				Resource:     tt.fields.Resource,
+				Protocol:     tt.fields.Protocol,
+			}
+			if err := c.CreateDevice(tt.args.device); (err != nil) != tt.wantErr {
+				t.Errorf("Client.CreateDevice() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+//func TestClient_GetDevices(t *testing.T) {
+//	client := resty.New()
+//	testServer := createTestServer(client.GetClient(), "http://iot-agent.de")
+//
+//	obj := fiware.IoTAgentGetDevicesResponse{
+//		Devices: []fiware.Devices{getDevices()}}
+//	testServer.saveObject(obj)
+//	httpClient := fiware.NewClient(fiware.WithHTTPClient(client))
+//	type fields struct {
+//		httpClient   *fiware.HTTPClient
+//		Host         string
+//		FiwareConfig *fiware.Config
+//		Resource     string
+//		Protocol     string
+//	}
+//	tests := []struct {
+//		name    string
+//		fields  fields
+//		want    *fiware.IoTAgentGetDevicesResponse
+//		wantErr bool
+//	}{
+//		{
+//			name: "Create Device",
+//			fields: fields{
+//				httpClient:   httpClient,
+//				Host:         "http://iot-agent.de",
+//				FiwareConfig: fiware.NewConfig(fiware.WithService("berlin"), fiware.WithServicePath("/")),
+//				Resource:     "/iot/d",
+//				Protocol:     "ul",
+//			},
+//			want:    &obj,
+//			wantErr: false,
+//		},
+//		{
+//			name: "Handle error response",
+//			fields: fields{
+//				httpClient:   httpClient,
+//				Host:         "http://iot-agent.de",
+//				FiwareConfig: fiware.NewConfig(fiware.WithService("fail"), fiware.WithServicePath("/")),
+//				Resource:     "/iot/d",
+//				Protocol:     "ul",
+//			},
+//			want:    &obj,
+//			wantErr: true,
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			c := &Client{
+//				httpClient:   tt.fields.httpClient,
+//				Host:         tt.fields.Host,
+//				FiwareConfig: tt.fields.FiwareConfig,
+//				Resource:     tt.fields.Resource,
+//				Protocol:     tt.fields.Protocol,
+//			}
+//			got, err := c.GetDevices()
+//			if (err != nil) != tt.wantErr {
+//				t.Errorf("Client.GetDevices() error = %v, wantErr %v", err, tt.wantErr)
+//				return
+//			}
+//			if !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("Client.GetDevices() = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+//}
+
+func TestClient_UpdateDevice(t *testing.T) {
+	client := resty.New()
+	testServer := createTestServer(client.GetClient(), "http://iot-agent.de")
+
+	obj := fiware.IoTAgentCreateDeviceRequest{
+		Devices: []fiware.Devices{getDevices()}}
+	testServer.saveObject(obj)
+
+	httpClient := fiware.NewClient(fiware.WithHTTPClient(client))
+	type fields struct {
+		httpClient   *fiware.HTTPClient
+		Host         string
+		FiwareConfig *fiware.Config
+		Resource     string
+		Protocol     string
+	}
+	type args struct {
+		device *fiware.IoTAgentCreateDeviceRequest
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Update Device",
+			args: args{
+				device: &obj,
+			},
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("berlin"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Handle error response",
+			args: args{
+				device: &obj,
+			},
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("fail"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{
+				httpClient:   tt.fields.httpClient,
+				Host:         tt.fields.Host,
+				FiwareConfig: tt.fields.FiwareConfig,
+				Resource:     tt.fields.Resource,
+				Protocol:     tt.fields.Protocol,
+			}
+			if err := c.UpdateDevice(tt.args.device); (err != nil) != tt.wantErr {
+				t.Errorf("Client.UpdateDevice() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestClient_DeleteDevice(t *testing.T) {
+	type fields struct {
+		httpClient   *fiware.HTTPClient
+		Host         string
+		FiwareConfig *fiware.Config
+		Resource     string
+		Protocol     string
+	}
+	type args struct {
+		id string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{
+				httpClient:   tt.fields.httpClient,
+				Host:         tt.fields.Host,
+				FiwareConfig: tt.fields.FiwareConfig,
+				Resource:     tt.fields.Resource,
+				Protocol:     tt.fields.Protocol,
+			}
+			if err := c.DeleteDevice(tt.args.id); (err != nil) != tt.wantErr {
+				t.Errorf("Client.DeleteDevice() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestClient_GetDevices(t *testing.T) {
+	client := resty.New()
+	testServer := createTestServer(client.GetClient(), "http://iot-agent.de")
+
+	obj := fiware.IoTAgentGetDeviceResponse{
+		Devices: []fiware.Devices{getDevices()}}
+	testServer.saveObject(obj)
+	httpClient := fiware.NewClient(fiware.WithHTTPClient(client))
+	type fields struct {
+		httpClient   *fiware.HTTPClient
+		Host         string
+		FiwareConfig *fiware.Config
+		Resource     string
+		Protocol     string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    *fiware.IoTAgentGetDeviceResponse
+		wantErr bool
+	}{
+		{
+			name: "Create Device",
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("berlin"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			want:    &obj,
+			wantErr: false,
+		},
+		{
+			name: "Handle error response",
+			fields: fields{
+				httpClient:   httpClient,
+				Host:         "http://iot-agent.de",
+				FiwareConfig: fiware.NewConfig(fiware.WithService("fail"), fiware.WithServicePath("/")),
+				Resource:     "/iot/d",
+				Protocol:     "ul",
+			},
+			want:    &obj,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{
+				httpClient:   tt.fields.httpClient,
+				Host:         tt.fields.Host,
+				FiwareConfig: tt.fields.FiwareConfig,
+				Resource:     tt.fields.Resource,
+				Protocol:     tt.fields.Protocol,
+			}
+			got, err := c.GetDevices()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Client.GetDevices() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Client.GetDevices() = %v, want %v", got, tt.want)
 			}
 		})
 	}

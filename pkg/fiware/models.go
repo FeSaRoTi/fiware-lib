@@ -71,10 +71,6 @@ type Attribute struct {
 	Type     string   `json:"type"`
 	Metadata Metadata `json:"metadata"`
 }
-type Lazy struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
 type ServiceGroup struct {
 	Resource   string      `json:"resource"`
 	Apikey     string      `json:"apikey"`
@@ -85,4 +81,40 @@ type ServiceGroup struct {
 	Commands   []Command   `json:"commands"`
 	Attributes []Attribute `json:"attributes"`
 	Lazy       []Lazy      `json:"lazy"`
+}
+type IoTAgentCreateDeviceRequest struct {
+	Devices []Devices `json:"devices"`
+}
+type IoTAgentGetDevicesResponse struct {
+	Devices []Devices `json:"devices"`
+}
+type Attributes struct {
+	ObjectID string `json:"object_id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+}
+type Lazy struct {
+	ObjectID string   `json:"object_id,omitempty"`
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Metadata Metadata `json:"metadata,omitempty"`
+}
+type Commands struct {
+	ObjectID string `json:"object_id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+}
+type StaticAttributes struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+type Devices struct {
+	DeviceID         string             `json:"device_id"`
+	EntityName       string             `json:"entity_name"`
+	EntityType       string             `json:"entity_type"`
+	Attributes       []Attributes       `json:"attributes,omitempty"`
+	Lazy             []Lazy             `json:"lazy,omitempty"`
+	Commands         []Commands         `json:"commands,omitempty"`
+	StaticAttributes []StaticAttributes `json:"static_attributes,omitempty"`
 }
